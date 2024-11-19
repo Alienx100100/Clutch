@@ -36,8 +36,8 @@ IST = pytz.timezone('Asia/Kolkata')
 # Absolute path to the ak.bin file (modify this to point to the correct path)
 AK_BIN_PATH = 'KALUAA'
 
-# Function to read user IDs and their expiration times from the file
-# Function to read users from Redis
+
+# Function to read user IDs and their expiration times from Redis
 def read_users():
     users = {}
     for key in redis_client.scan_iter("user:*"):
@@ -52,7 +52,7 @@ def save_user(user_id, expiration_time):
     redis_client.set(f"user:{user_id}", expiration_time.isoformat())
     redis_client.expireat(f"user:{user_id}", expiration_time.timestamp())  # Set TTL
 
-# Function to remove expired users
+# Function to remove expired users from Redis
 def remove_expired_users():
     current_time = datetime.now(IST)
     for key in redis_client.scan_iter("user:*"):
@@ -62,6 +62,7 @@ def remove_expired_users():
             if exp_time <= current_time:
                 redis_client.delete(key)
 
+# Handler for adding a user
 @bot.message_handler(commands=['add'])
 def add_user(message):
     try:
@@ -103,6 +104,7 @@ def add_user(message):
         logging.error(f"Error in /add command: {e}")
         bot.reply_to(message, "An error occurred while processing your request. Please try again.")
 
+# Handler for removing a user
 @bot.message_handler(commands=['remove'])
 def remove_user(message):
     user_id = str(message.chat.id)
@@ -121,6 +123,7 @@ def remove_user(message):
     else:
         response = "Only Admin Can Run This Command."
     bot.reply_to(message, response)
+
 
 @bot.message_handler(commands=['allusers'])
 def show_all_users(message):
@@ -295,29 +298,40 @@ def handle_matrix(message):
 
 @bot.message_handler(commands=['help'])
 def show_help(message):
-    user_id = str(message.chat.id)
+    try:
+        user_id = str(message.chat.id)
 
-    with open('owner.txt', "r") as file:
-        owners = file.read().splitlines()
-
-    help_text = '''Available commands:
-    /matrix : Method For Bgmi Servers. 
-    /rulesanduse : Please Check Before Use !!.
-    /plan : Checkout Our Botnet Rates.
+        # Basic help text for all users
+        help_text = '''Available Commands:
+    - /matrix : Execute a BGMI server attack (specific conditions apply).
+    - /rulesanduse : View usage rules and important guidelines.
+    - /plan : Check available plans and pricing for the bot.
+    - /status : View ongoing attack details.
+    - /id : Retrieve your user ID.
     '''
 
-    if user_id in owners:
-        help_text += '''
-To See Admin Commands:
-    /admincmd : Shows All Admin Commands.
-        '''
+        # Check if the user is an admin and append admin commands
+        if user_id in admin_id:
+            help_text += '''
+Admin Commands:
+    - /add <user_id> <time_in_minutes> : Add a user with specified time.
+    - /remove <user_id> : Remove a user from the authorized list.
+    - /allusers : List all authorized users.
+    - /broadcast : Send a broadcast message to all users.
+    '''
 
-    help_text += ''' 
+        # Footer with channel and owner information
+        help_text += ''' 
 JOIN CHANNEL - @MATRIX_CHEATS
 BUY / OWNER - @its_MATRIX_King
-    '''
+'''
 
-    bot.reply_to(message, help_text)
+        # Send the constructed help text to the user
+        bot.reply_to(message, help_text)
+    
+    except Exception as e:
+        logging.error(f"Error in /help command: {e}")
+        bot.reply_to(message, "An error occurred while fetching help. Please try again.")
     
 @bot.message_handler(commands=['start'])
 def welcome_start(message):
@@ -371,6 +385,8 @@ def welcome_plan(message):
         response = "You do not have permission to access admin commands."
         bot.reply_to(message, response)
 
+
+# Handler for broadcasting a message
 @bot.message_handler(commands=['broadcast'])
 def broadcast_message(message):
     user_id = str(message.chat.id)
@@ -378,17 +394,16 @@ def broadcast_message(message):
         command = message.text.split(maxsplit=1)
         if len(command) > 1:
             message_to_broadcast = "Message To All Users By Admin:\n\n" + command[1]
-            with open('users.txt', "r") as file:
-                users = file.read().splitlines()
-                if users:
-                    for user in users:
-                        try:
-                            bot.send_message(user, message_to_broadcast)
-                        except Exception as e:
-                            print(f"Failed to send broadcast message to user {user}: {str(e)}")
-                    response = "Broadcast Message Sent Successfully To All Users."
-                else:
-                    response = "No users found in users.txt."
+            users = read_users()  # Get users from Redis
+            if users:
+                for user in users:
+                    try:
+                        bot.send_message(user, message_to_broadcast)
+                    except Exception as e:
+                        print(f"Failed to send broadcast message to user {user}: {str(e)}")
+                response = "Broadcast Message Sent Successfully To All Users."
+            else:
+                response = "No users found in the system."
         else:
             response = "Please Provide A Message To Broadcast."
     else:
