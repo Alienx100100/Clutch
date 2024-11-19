@@ -21,7 +21,7 @@ firebase_admin.initialize_app(cred)
 # Initialize Firestore
 db = firestore.client()
 
-bot = telebot.TeleBot('7599785141:AAHuEi4nik5vPSMDZ_g3jFlWeKTzRO53v6Y')
+bot = telebot.TeleBot('7858493439:AAGbtHzHHZguQoJzAney4Ccer1ZUisC-bDI')
 
 # Admin user IDs
 admin_id = ["7418099890"]
