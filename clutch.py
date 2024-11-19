@@ -55,14 +55,18 @@ db = firestore.client()
 
 # Function to read user IDs and their expiration times from the Firestore collection
 def read_users():
-    users_ref = db.collection('users')  # Firestore reference to the 'users' collection
-    docs = users_ref.stream()  # Stream all the documents in the collection
-    users = {}
-    for doc in docs:
-        data = doc.to_dict()  # Convert document data to a dictionary
-        expiration_time = datetime.fromisoformat(data['expiration']).astimezone(IST)
-        users[doc.id] = expiration_time
-    return users
+    try:
+        users_ref = db.collection('users')
+        docs = users_ref.stream()
+        users = {}
+        for doc in docs:
+            data = doc.to_dict()
+            expiration_time = datetime.fromisoformat(data['expiration']).astimezone(IST)
+            users[doc.id] = expiration_time
+        return users
+    except Exception as e:
+        print(f"Error reading users: {e}")
+        return {}
 
 # Function to save users to file
 def save_user(user_id, expiration_time):
@@ -409,6 +413,7 @@ def run_bot():
             logging.error(f"An error occurred: {e}")
             print(f"An error occurred: {e}")
             time.sleep(15)  # Sleep before restarting the bot
+
 
 if __name__ == "__main__":
     run_bot()
