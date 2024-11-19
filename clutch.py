@@ -31,30 +31,21 @@ IST = pytz.timezone('Asia/Kolkata')
 
 # Absolute path to the ak.bin file (modify this to point to the correct path)
 AK_BIN_PATH = 'KALUAA'
-import base64
-with open('admin.json', 'rb') as f:
-    encoded_key = base64.b64encode(f.read()).decode('utf-8')
-print(encoded_key)
-
-# Function to read user IDs and their expiration times from the file
-# Load the base64-encoded JSON credentials from environment variables
 import firebase_admin
 from firebase_admin import credentials, firestore
+import os
 
-# Decode base64-encoded credentials
-firebase_config_base64 = os.getenv('admin.json')
-if firebase_config_base64:
-    firebase_config_json = base64.b64decode(firebase_config_base64).decode('utf-8')
-    firebase_cred = json.loads(firebase_config_json)
-    cred = credentials.Certificate(firebase_cred)
-    firebase_admin.initialize_app(cred)
-else:
-    raise Exception("FIREBASE_CONFIG not set in environment variables")
+# Path to your Firebase service account JSON file
+SERVICE_ACCOUNT_PATH = 'admin.json'
 
-# Initialize Firestore database
+# Initialize Firebase Admin SDK with the service account credentials
+cred = credentials.Certificate(SERVICE_ACCOUNT_PATH)
+firebase_admin.initialize_app(cred)
+
+# Initialize Firestore client
 db = firestore.client()
 
-# Function to read user IDs and their expiration times from the Firestore collection
+# Function to read users from Firestore
 def read_users():
     try:
         users_ref = db.collection('users')
