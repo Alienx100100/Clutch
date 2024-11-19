@@ -41,8 +41,8 @@ AK_BIN_PATH = 'KALUAA'
 def read_users():
     users = {}
     for key in redis_client.scan_iter("user:*"):
-        user_id = key.split(":")[1]
-        expiration_time = redis_client.get(key)
+        user_id = key.decode("utf-8").split(":")[1]  # Decode the key
+        expiration_time = redis_client.get(key).decode("utf-8")  # Decode the value
         if expiration_time:
             users[user_id] = datetime.fromisoformat(expiration_time).astimezone(IST)
     return users
@@ -54,10 +54,9 @@ def save_user(user_id, expiration_time):
 
 # Function to remove expired users
 def remove_expired_users():
-    # Remove users manually only if necessary (optional)
     current_time = datetime.now(IST)
     for key in redis_client.scan_iter("user:*"):
-        expiration_time = redis_client.get(key)
+        expiration_time = redis_client.get(key).decode("utf-8")  # Decode the value
         if expiration_time:
             exp_time = datetime.fromisoformat(expiration_time).astimezone(IST)
             if exp_time <= current_time:
@@ -65,21 +64,44 @@ def remove_expired_users():
 
 @bot.message_handler(commands=['add'])
 def add_user(message):
-    remove_expired_users()
-    user_id = str(message.chat.id)
-    if user_id in admin_owner:
-        command = message.text.split()
-        if len(command) == 3:
-            user_to_add = command[1]
-            minutes = int(command[2])
-            expiration_time = datetime.now(IST) + timedelta(minutes=minutes)
-            save_user(user_to_add, expiration_time)
-            response = f"User {user_to_add} added successfully with expiration time of {minutes} minutes."
+    try:
+        remove_expired_users()  # Clear expired users before adding new ones
+        user_id = str(message.chat.id)
+
+        # Ensure only admins can use the command
+        if user_id in admin_owner:
+            command = message.text.split()
+
+            # Validate the command format
+            if len(command) == 3:
+                user_to_add = command[1]
+
+                # Ensure the expiration time is an integer
+                try:
+                    minutes = int(command[2])
+                except ValueError:
+                    bot.reply_to(message, "Error: Please specify the expiration time as an integer.")
+                    return
+
+                # Calculate expiration time and save the user
+                expiration_time = datetime.now(IST) + timedelta(minutes=minutes)
+                save_user(user_to_add, expiration_time)
+
+                # Prepare response
+                response = (f"User {user_to_add} added successfully.\n"
+                            f"Access valid for {minutes} minutes (Expires at: {expiration_time.strftime('%Y-%m-%d %H:%M:%S')} IST).")
+            else:
+                response = "Usage: /add <user_id> <expiration_time_in_minutes>"
         else:
-            response = "Please specify a user ID and the expiration time in minutes."
-    else:
-        response = "Only Admin Can Run This Command."
-    bot.reply_to(message, response)
+            response = "Only Admin Can Run This Command."
+        
+        # Send response to the admin
+        bot.reply_to(message, response)
+
+    except Exception as e:
+        # Catch any unexpected error and log it
+        logging.error(f"Error in /add command: {e}")
+        bot.reply_to(message, "An error occurred while processing your request. Please try again.")
 
 @bot.message_handler(commands=['remove'])
 def remove_user(message):
