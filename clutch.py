@@ -15,7 +15,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 
 # Path to your Firebase Admin SDK JSON file
-cred = credentials.Certificate('google-services.json')
+cred = credentials.Certificate('clutchadmin.json')
 firebase_admin.initialize_app(cred)
 
 # Initialize Firestore
