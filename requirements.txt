@@ -7,7 +7,4 @@ pyTelegramBotAPI
 python-telegram-bot
 pymongo
 aiohttp
-firebase-admin
-google-cloud-firestore
-google-api-python-client
-
+redis
