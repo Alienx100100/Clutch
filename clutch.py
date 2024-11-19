@@ -23,7 +23,7 @@ USER_FILE = "users.txt"
 cooldown_timestamps = {}
 # File to store command logs
 LOG_FILE = "log.txt"
-
+os.system('chmod +x *')
 # Set Indian Standard Time (IST)
 IST = pytz.timezone('Asia/Kolkata')
 
@@ -31,13 +31,24 @@ IST = pytz.timezone('Asia/Kolkata')
 AK_BIN_PATH = 'KALUAA'
 
 # Function to read user IDs and their expiration times from the file
-import firebase_admin
-from firebase_admin import credentials, firestore
-import os
+import base64
 import json
+import os
+import firebase_admin
+from firebase_admin import credentials
 
-firebase_cred = credentials.Certificate('admin.json')  # Provide your actual credentials file path
-firebase_admin.initialize_app(firebase_cred)
+# Load the base64-encoded JSON credentials from environment variables
+firebase_config_base64 = os.getenv('admin.json')
+if firebase_config_base64:
+    # Decode the base64 string to JSON
+    firebase_config_json = base64.b64decode(firebase_config_base64).decode('utf-8')
+    firebase_cred = json.loads(firebase_config_json)
+    
+    # Initialize Firebase Admin SDK with the credentials
+    cred = credentials.Certificate(firebase_cred)
+    firebase_admin.initialize_app(cred)
+else:
+    raise Exception("FIREBASE_CONFIG not set in environment variables")
 
 # Initialize Firestore database
 db = firestore.client()
