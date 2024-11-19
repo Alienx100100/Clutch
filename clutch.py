@@ -15,7 +15,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 
 # Path to your Firebase Admin SDK JSON file
-cred = credentials.Certificate('FIREBASE_CRED')
+cred = credentials.Certificate('admin.json')
 firebase_admin.initialize_app(cred)
 
 # Initialize Firestore
