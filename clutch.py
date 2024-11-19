@@ -32,7 +32,7 @@ else:
     raise Exception("FIREBASE_CONFIG not set in environment variables")
 
 bot = telebot.TeleBot('7858493439:AAGbtHzHHZguQoJzAney4Ccer1ZUisC-bDI')
-db = firestore.cilent()
+db = firestore.client()
 # Admin user IDs
 admin_id = ["7418099890"]
 admin_owner = ["7418099890"]
