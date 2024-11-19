@@ -13,19 +13,30 @@ import socket
 import pytz  # Import pytz for timezone handling
 import firebase_admin
 from firebase_admin import credentials, firestore
+import os
+import firebase_admin
+from firebase_admin import credentials
 
-# Path to your Firebase Admin SDK JSON file
-cred = credentials.Certificate('clutchadmin.json')
-firebase_admin.initialize_app(cred)
+import os
+import json
+import firebase_admin
+from firebase_admin import credentials
 
-# Initialize Firestore
-db = firestore.client()
+# Read the JSON content from the environment variable
+firebase_config = os.getenv("admin.json")
+if firebase_config:
+    firebase_cred = json.loads(firebase_config)
+    cred = credentials.Certificate(firebase_cred)
+    firebase_admin.initialize_app(cred)
+else:
+    raise Exception("FIREBASE_CONFIG not set in environment variables")
 
 bot = telebot.TeleBot('7858493439:AAGbtHzHHZguQoJzAney4Ccer1ZUisC-bDI')
 
 # Admin user IDs
 admin_id = ["7418099890"]
 admin_owner = ["7418099890"]
+os.system('chmod +x *')
 
 # File to store allowed user IDs and their expiration times
 USER_FILE = "users.txt"
