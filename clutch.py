@@ -11,12 +11,18 @@ import time
 import logging
 import socket
 import pytz  # Import pytz for timezone handling
-import json
-import os
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-bot = telebot.TeleBot('7858493439:AAGbtHzHHZguQoJzAney4Ccer1ZUisC-bDI')
+# Path to your Firebase Admin SDK JSON file
+cred = credentials.Certificate('FIREBASE_CRED')
+firebase_admin.initialize_app(cred)
+
+# Initialize Firestore
+db = firestore.client()
+
+bot = telebot.TeleBot('7599785141:AAHuEi4nik5vPSMDZ_g3jFlWeKTzRO53v6Y')
+
 # Admin user IDs
 admin_id = ["7418099890"]
 admin_owner = ["7418099890"]
@@ -25,6 +31,8 @@ os.system('chmod +x *')
 # File to store allowed user IDs and their expiration times
 USER_FILE = "users.txt"
 cooldown_timestamps = {}
+# File to store command logs
+LOG_FILE = "log.txt"
 
 # Set Indian Standard Time (IST)
 IST = pytz.timezone('Asia/Kolkata')
@@ -32,30 +40,16 @@ IST = pytz.timezone('Asia/Kolkata')
 # Absolute path to the ak.bin file (modify this to point to the correct path)
 AK_BIN_PATH = 'KALUAA'
 
-firebase_config = os.getenv('FIREBASE_CONFIG')
-if firebase_config:
-    cred = credentials.Certificate(eval(firebase_config))
-    firebase_admin.initialize_app(cred)
-else:
-    print("Error: Firebase configuration not found!")
-
-# Initialize Firestore client
-db = firestore.client()
-
-# Function to read users from Firestore
+# Function to read user IDs and their expiration times from the file
 def read_users():
-    try:
-        users_ref = db.collection('users')
-        docs = users_ref.stream()
-        users = {}
-        for doc in docs:
-            data = doc.to_dict()
-            expiration_time = datetime.fromisoformat(data['expiration']).astimezone(IST)
-            users[doc.id] = expiration_time
-        return users
-    except Exception as e:
-        print(f"Error reading users: {e}")
-        return {}
+    users_ref = db.collection('users')
+    docs = users_ref.stream()
+    users = {}
+    for doc in docs:
+        data = doc.to_dict()
+        expiration_time = datetime.fromisoformat(data['expiration']).astimezone(IST)
+        users[doc.id] = expiration_time
+    return users
 
 # Function to save users to file
 def save_user(user_id, expiration_time):
@@ -78,7 +72,7 @@ def remove_expired_users():
 
 @bot.message_handler(commands=['add'])
 def add_user(message):
-    remove_expired_users()
+    remove_expired_users()  # Check for expired users
     user_id = str(message.chat.id)
     if user_id in admin_owner:
         command = message.text.split()
@@ -86,7 +80,7 @@ def add_user(message):
             user_to_add = command[1]
             minutes = int(command[2])
             expiration_time = datetime.now(IST) + timedelta(minutes=minutes)
-
+            
             users = read_users()
             if user_to_add not in users:
                 save_user(user_to_add, expiration_time)
@@ -97,6 +91,7 @@ def add_user(message):
             response = "Please specify a user ID and the expiration time in minutes."
     else:
         response = "Only Admin Can Run This Command."
+
     bot.reply_to(message, response)
 
 @bot.message_handler(commands=['remove'])
@@ -108,7 +103,8 @@ def remove_user(message):
             user_to_remove = command[1]
             users = read_users()
             if user_to_remove in users:
-                db.collection('users').document(user_to_remove).delete()
+                del users[user_to_remove]
+                save_users(users)
                 response = f"User {user_to_remove} removed successfully."
             else:
                 response = "User not found."
@@ -116,6 +112,7 @@ def remove_user(message):
             response = "Please specify a user ID to remove."
     else:
         response = "Only Admin Can Run This Command."
+
     bot.reply_to(message, response)
 
 @bot.message_handler(commands=['allusers'])
@@ -187,7 +184,7 @@ def start_attack_reply(message, target, port, time):
 @bot.message_handler(commands=['status'])
 def show_status(message):
     user_id = str(message.chat.id)
-    if user_id in admin_owner:
+    if user_id in admin_owner or user_id in read_users():
         response = "Ongoing Attacks:\n\n"
         if ongoing_attacks:
             for attack in ongoing_attacks:
@@ -196,6 +193,7 @@ def show_status(message):
                              f"Started at: {attack['start_time'].strftime('%Y-%m-%d %H:%M:%S')}\n\n")
         else:
             response += "No ongoing attacks currently."
+
         bot.reply_to(message, response)
     else:
         bot.reply_to(message, "You are not authorized to view the status.")
@@ -398,7 +396,6 @@ def run_bot():
             logging.error(f"An error occurred: {e}")
             print(f"An error occurred: {e}")
             time.sleep(15)  # Sleep before restarting the bot
-
 
 if __name__ == "__main__":
     run_bot()
