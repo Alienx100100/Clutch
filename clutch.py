@@ -17,22 +17,7 @@ import os
 import firebase_admin
 from firebase_admin import credentials
 
-import os
-import json
-import firebase_admin
-from firebase_admin import credentials
-
-# Read the JSON content from the environment variable
-firebase_config = os.getenv("admin.json")
-if firebase_config:
-    firebase_cred = json.loads(firebase_config)
-    cred = credentials.Certificate(firebase_cred)
-    firebase_admin.initialize_app(cred)
-else:
-    raise Exception("FIREBASE_CONFIG not set in environment variables")
-
 bot = telebot.TeleBot('7858493439:AAGbtHzHHZguQoJzAney4Ccer1ZUisC-bDI')
-db = firestore.client()
 # Admin user IDs
 admin_id = ["7418099890"]
 admin_owner = ["7418099890"]
@@ -51,12 +36,30 @@ IST = pytz.timezone('Asia/Kolkata')
 AK_BIN_PATH = 'KALUAA'
 
 # Function to read user IDs and their expiration times from the file
+import firebase_admin
+from firebase_admin import credentials, firestore
+import os
+import json
+
+# Initialize Firebase Admin SDK
+firebase_config = os.getenv("admin.json")
+if firebase_config:
+    firebase_cred = json.loads(firebase_config)
+    cred = credentials.Certificate(firebase_cred)
+    firebase_admin.initialize_app(cred)
+else:
+    raise Exception("FIREBASE_CONFIG not set in environment variables")
+
+# Initialize Firestore database
+db = firestore.client()
+
+# Function to read user IDs and their expiration times from the Firestore collection
 def read_users():
-    users_ref = db.collection('users')
-    docs = users_ref.stream()
+    users_ref = db.collection('users')  # Firestore reference to the 'users' collection
+    docs = users_ref.stream()  # Stream all the documents in the collection
     users = {}
     for doc in docs:
-        data = doc.to_dict()
+        data = doc.to_dict()  # Convert document data to a dictionary
         expiration_time = datetime.fromisoformat(data['expiration']).astimezone(IST)
         users[doc.id] = expiration_time
     return users
