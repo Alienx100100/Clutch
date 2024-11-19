@@ -42,7 +42,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 
 # Decode base64-encoded credentials
-firebase_config_base64 = os.getenv('FIREBASE_CONFIG')
+firebase_config_base64 = os.getenv('admin.json')
 if firebase_config_base64:
     firebase_config_json = base64.b64decode(firebase_config_base64).decode('utf-8')
     firebase_cred = json.loads(firebase_config_json)
