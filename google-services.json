@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "268048641300",
+    "project_id": "clutch-e8813",
+    "storage_bucket": "clutch-e8813.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:268048641300:android:26f2d27ff43ace42b8a601",
+        "android_client_info": {
+          "package_name": "com.clutch.py"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBTtHM3USJdLbExsoG_Ab48uEC30tf5Uyo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
