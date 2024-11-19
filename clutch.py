@@ -40,12 +40,17 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 import os
 import json
-const admin = require('firebase-admin');
-const serviceAccount = require('./admin.json');  // Path to your admin.json file
 
+const admin = require('firebase-admin');
+
+// Decode the base64-encoded service account credentials
+const serviceAccount = JSON.parse(Buffer.from(process.env.KEY, 'base64').toString('utf8'));
+
+// Initialize Firebase Admin SDK with the credentials
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
+
 
 # Initialize Firebase Admin SDK
 firebase_config = os.getenv("admin.json")
