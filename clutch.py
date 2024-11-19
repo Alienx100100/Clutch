@@ -34,6 +34,7 @@ AK_BIN_PATH = 'KALUAA'
 import base64
 import json
 import os
+from firebase_admin import firestore
 import firebase_admin
 from firebase_admin import credentials
 
