@@ -11,11 +11,6 @@ import time
 import logging
 import socket
 import pytz  # Import pytz for timezone handling
-import firebase_admin
-from firebase_admin import credentials, firestore
-import os
-import firebase_admin
-from firebase_admin import credentials
 
 bot = telebot.TeleBot('7858493439:AAGbtHzHHZguQoJzAney4Ccer1ZUisC-bDI')
 # Admin user IDs
@@ -41,25 +36,8 @@ from firebase_admin import credentials, firestore
 import os
 import json
 
-const admin = require('firebase-admin');
-
-// Decode the base64-encoded service account credentials
-const serviceAccount = JSON.parse(Buffer.from(process.env.KEY, 'base64').toString('utf8'));
-
-// Initialize Firebase Admin SDK with the credentials
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
-
-
-# Initialize Firebase Admin SDK
-firebase_config = os.getenv("admin.json")
-if firebase_config:
-    firebase_cred = json.loads(firebase_config)
-    cred = credentials.Certificate(firebase_cred)
-    firebase_admin.initialize_app(cred)
-else:
-    raise Exception("FIREBASE_CONFIG not set in environment variables")
+firebase_cred = credentials.Certificate('admin.json')  # Provide your actual credentials file path
+firebase_admin.initialize_app(firebase_cred)
 
 # Initialize Firestore database
 db = firestore.client()
@@ -100,7 +78,7 @@ def remove_expired_users():
 
 @bot.message_handler(commands=['add'])
 def add_user(message):
-    remove_expired_users()  # Check for expired users
+    remove_expired_users()
     user_id = str(message.chat.id)
     if user_id in admin_owner:
         command = message.text.split()
@@ -108,7 +86,7 @@ def add_user(message):
             user_to_add = command[1]
             minutes = int(command[2])
             expiration_time = datetime.now(IST) + timedelta(minutes=minutes)
-            
+
             users = read_users()
             if user_to_add not in users:
                 save_user(user_to_add, expiration_time)
@@ -119,7 +97,6 @@ def add_user(message):
             response = "Please specify a user ID and the expiration time in minutes."
     else:
         response = "Only Admin Can Run This Command."
-
     bot.reply_to(message, response)
 
 @bot.message_handler(commands=['remove'])
@@ -131,8 +108,7 @@ def remove_user(message):
             user_to_remove = command[1]
             users = read_users()
             if user_to_remove in users:
-                del users[user_to_remove]
-                save_users(users)
+                db.collection('users').document(user_to_remove).delete()
                 response = f"User {user_to_remove} removed successfully."
             else:
                 response = "User not found."
@@ -140,7 +116,6 @@ def remove_user(message):
             response = "Please specify a user ID to remove."
     else:
         response = "Only Admin Can Run This Command."
-
     bot.reply_to(message, response)
 
 @bot.message_handler(commands=['allusers'])
@@ -212,7 +187,7 @@ def start_attack_reply(message, target, port, time):
 @bot.message_handler(commands=['status'])
 def show_status(message):
     user_id = str(message.chat.id)
-    if user_id in admin_owner or user_id in read_users():
+    if user_id in admin_owner:
         response = "Ongoing Attacks:\n\n"
         if ongoing_attacks:
             for attack in ongoing_attacks:
@@ -221,7 +196,6 @@ def show_status(message):
                              f"Started at: {attack['start_time'].strftime('%Y-%m-%d %H:%M:%S')}\n\n")
         else:
             response += "No ongoing attacks currently."
-
         bot.reply_to(message, response)
     else:
         bot.reply_to(message, "You are not authorized to view the status.")
