@@ -29,7 +29,7 @@ url = "https://yxffpwhflqaapiwcpknf.supabase.co"  # Supabase project URL
 key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4ZmZwd2hmbHFhYXBpd2Nwa25mIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczMjI3MzI5MywiZXhwIjoyMDQ3ODQ5MjkzfQ.WbVl0CoK25HVrFzchTnD7-AI-lPH8l_Vb1MbLQKT5NQ"  # Supabase anonymous API key
 supabase: Client = create_client(url, key)
 
-bot = telebot.TeleBot('7599785141:AAHuEi4nik5vPSMDZ_g3jFlWeKTzRO53v6Y')
+bot = telebot.TeleBot('7858493439:AAEDGY4WNmZkDHMFwwUbarXWmO3GXc8rB2s')
 
 # Setup timezone (IST)
 IST = pytz.timezone('Asia/Kolkata')
