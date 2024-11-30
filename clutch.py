@@ -26,7 +26,7 @@ url = "https://ldmyijysjjaimrbpqmek.supabase.co"
 key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxkbXlpanlzamphaW1yYnBxbWVrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczMjkwNjE5MSwiZXhwIjoyMDQ4NDgyMTkxfQ.mCpuIq0yPRskbuyxjXk57sB99dDqhxZ2YRJxtwaRk3U"
 supabase: Client = create_client(url, key)
 
-bot = telebot.TeleBot('7858493439:AAEDGY4WNmZkDHMFwwUbarXWmO3GXc8rB2s')
+bot = telebot.TeleBot('7599785141:AAFtrJQYnDy3Osx8vP3FOC8zFcLg1l9bGJc')
 IST = pytz.timezone('Asia/Kolkata')
 
 # Database connection
@@ -660,6 +660,7 @@ def show_help(message):
 • /status - 𝗖𝗵𝗲𝗰𝗸 𝗮𝘁𝘁𝗮𝗰𝗸 𝘀𝘁𝗮𝘁𝘂𝘀
 • /plan - 𝗩𝗶𝗲𝘄 𝗽𝗿𝗶𝗰𝗶𝗻𝗴 𝗽𝗹𝗮𝗻𝘀
 • /rulesanduse - 𝗩𝗶𝗲𝘄 𝗿𝘂𝗹𝗲𝘀
+• /redeem - 𝗥𝗲𝗱𝗲𝗲𝗺 𝗮 𝗹𝗶𝗰𝗲𝗻𝘀𝗲 𝗸𝗲𝘆
 '''
         if user_id in admin_id:
             help_text += '''
