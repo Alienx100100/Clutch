@@ -488,41 +488,53 @@ def handle_matrix(message):
     user_id = str(message.chat.id)
     users = read_users()
     
+    # Check if user is authorized
+    if user_id not in admin_owner and user_id not in users:
+        bot.reply_to(message, """
+⛔️ 𝗔𝗰𝗰𝗲𝘀𝘀 𝗗𝗲𝗻𝗶𝗲𝗱
+• 𝗬𝗼𝘂 𝗮𝗿𝗲 𝗻𝗼𝘁 𝗮𝘂𝘁𝗵𝗼𝗿𝗶𝘇𝗲𝗱
+• 𝗖𝗼𝗻𝘁𝗮𝗰𝘁 @its_MATRIX_King 𝘁𝗼 𝗽𝘂𝗿𝗰𝗵𝗮𝘀𝗲
+""")
+        return
+
     # Check for ongoing attacks
     if ongoing_attacks:
-        bot.reply_to(message, "⚠️ 𝗔𝗻 𝗮𝘁𝘁𝗮𝗰𝗸 𝗶𝘀 𝗰𝘂𝗿𝗿𝗲𝗻𝘁𝗹𝘆 𝗶𝗻 𝗽𝗿𝗼𝗴𝗿𝗲𝘀𝘀.")
-        return
+        attack_info = ongoing_attacks[0]  # Get the current attack
+        elapsed = (datetime.now(IST) - attack_info['start_time']).total_seconds()
+        remaining = max(0, attack_info['time'] - int(elapsed))
         
-    # Check user authorization
-    if user_id not in admin_owner and user_id not in users:
-        bot.reply_to(message, "⛔️ 𝗬𝗼𝘂 𝗮𝗿𝗲 𝗻𝗼𝘁 𝗮𝘂𝘁𝗵𝗼𝗿𝗶𝘇𝗲𝗱 𝘁𝗼 𝘂𝘀𝗲 𝘁𝗵𝗶𝘀 𝗰𝗼𝗺𝗺𝗮𝗻𝗱.")
+        bot.reply_to(message, f"""
+⚠️ 𝗔𝘁𝘁𝗮𝗰𝗸 𝗶𝗻 𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀
+
+⏱️ 𝗥𝗲𝗺𝗮𝗶𝗻𝗶𝗻𝗴: {remaining} seconds
+
+📝 𝗣𝗹𝗲𝗮𝘀𝗲 𝘄𝗮𝗶𝘁 𝗳𝗼𝗿 𝘁𝗵𝗲 𝗰𝘂𝗿𝗿𝗲𝗻𝘁 𝗮𝘁𝘁𝗮𝗰𝗸 𝘁𝗼 𝗳𝗶𝗻𝗶𝘀𝗵
+""")
         return
-        
+
     # Parse command arguments
     args = message.text.split()
     if len(args) != 4:
         bot.reply_to(message, """
 📝 𝗨𝘀𝗮𝗴𝗲: /matrix <target> <port> <time>
-
-𝗘𝘅𝗮𝗺𝗽𝗹𝗲:
-/matrix 1.1.1.1 80 120
+𝗘𝘅𝗮𝗺𝗽𝗹𝗲: /matrix 1.1.1.1 80 120
 
 ⚠️ 𝗟𝗶𝗺𝗶𝘁𝗮𝘁𝗶𝗼𝗻𝘀:
 • 𝗠𝗮𝘅 𝘁𝗶𝗺𝗲: 180 𝘀𝗲𝗰𝗼𝗻𝗱𝘀
 • 𝗖𝗼𝗼𝗹𝗱𝗼𝘄𝗻: 5 𝗺𝗶𝗻𝘂𝘁𝗲𝘀
 """)
         return
-        
+
     try:
         target = args[1]
         port = int(args[2])
         time = int(args[3])
-        
+
         # Validate time limit
         if time > 180:
             bot.reply_to(message, "⚠️ 𝗠𝗮𝘅𝗶𝗺𝘂𝗺 𝗮𝘁𝘁𝗮𝗰𝗸 𝘁𝗶𝗺𝗲 𝗶𝘀 180 𝘀𝗲𝗰𝗼𝗻𝗱𝘀.")
             return
-            
+
         # Check cooldown for non-admin users
         if user_id not in admin_owner:
             if user_id in attack_cooldown:
@@ -532,18 +544,17 @@ def handle_matrix(message):
                     seconds = int(remaining.total_seconds() % 60)
                     bot.reply_to(message, f"""
 ⏳ 𝗖𝗼𝗼𝗹𝗱𝗼𝘄𝗻 𝗔𝗰𝘁𝗶𝘃𝗲
-
 𝗣𝗹𝗲𝗮𝘀𝗲 𝘄𝗮𝗶𝘁: {minutes}m {seconds}s
 """)
                     return
-                    
+
         # Start the attack
         start_attack_reply(message, target, port, time)
-        
+
         # Set cooldown for non-admin users
         if user_id not in admin_owner:
             attack_cooldown[user_id] = datetime.now(IST) + timedelta(minutes=5)
-            
+
     except ValueError:
         bot.reply_to(message, "❌ 𝗘𝗿𝗿𝗼𝗿: 𝗣𝗼𝗿𝘁 𝗮𝗻𝗱 𝘁𝗶𝗺𝗲 𝗺𝘂𝘀𝘁 𝗯𝗲 𝗻𝘂𝗺𝗯𝗲𝗿𝘀.")
 
