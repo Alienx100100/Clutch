@@ -571,25 +571,50 @@ def show_status(message):
     if user_id not in admin_owner and user_id not in users:
         bot.reply_to(message, "⛔️ 𝗬𝗼𝘂 𝗮𝗿𝗲 𝗻𝗼𝘁 𝗮𝘂𝘁𝗵𝗼𝗿𝗶𝘇𝗲𝗱 𝘁𝗼 𝘂𝘀𝗲 𝘁𝗵𝗶𝘀 𝗰𝗼𝗺𝗺𝗮𝗻𝗱.")
         return
-        
+
     if not ongoing_attacks:
         bot.reply_to(message, "📊 𝗦𝘁𝗮𝘁𝘂𝘀: No ongoing attacks")
         return
-        
-    response = "📊 𝗢𝗻𝗴𝗼𝗶𝗻𝗴 𝗔𝘁𝘁𝗮𝗰𝗸𝘀:\n\n"
+
     current_time = datetime.now(IST)
     
-    for attack in ongoing_attacks:
-        elapsed = (current_time - attack['start_time']).total_seconds()
-        remaining = max(0, attack['time'] - int(elapsed))
-        
-        response += (f"👤 𝗨𝘀𝗲𝗿: {attack['user']}\n"
-                    f"🎯 𝗧𝗮𝗿𝗴𝗲𝘁: {attack['target']}\n"
-                    f"🔌 𝗣𝗼𝗿𝘁: {attack['port']}\n"
-                    f"⏱ 𝗧𝗶𝗺𝗲: {attack['time']} seconds\n"
-                    f"⌛️ 𝗥𝗲𝗺𝗮𝗶𝗻𝗶𝗻𝗴: {remaining} seconds\n"
-                    f"📅 𝗦𝘁𝗮𝗿𝘁𝗲𝗱: {attack['start_time'].strftime('%Y-%m-%d %H:%M:%S')} IST\n\n")
-    
+    # Different views for admin and regular users
+    if user_id in admin_owner:
+        # Detailed admin view
+        response = "📊 𝗗𝗲𝘁𝗮𝗶𝗹𝗲𝗱 𝗔𝘁𝘁𝗮𝗰𝗸 𝗦𝘁𝗮𝘁𝘂𝘀:\n\n"
+        for attack in ongoing_attacks:
+            elapsed = (current_time - attack['start_time']).total_seconds()
+            remaining = max(0, attack['time'] - int(elapsed))
+            progress = min(100, (elapsed / attack['time']) * 100)
+            
+            response += (
+                f"👤 𝗨𝘀𝗲𝗿: @{attack['user']} (ID: {attack['user_id']})\n"
+                f"🎯 𝗧𝗮𝗿𝗴𝗲𝘁: {attack['target']}\n"
+                f"🔌 𝗣𝗼𝗿𝘁: {attack['port']}\n"
+                f"⏱️ 𝗧𝗼𝘁𝗮𝗹 𝗧𝗶𝗺𝗲: {attack['time']} seconds\n"
+                f"⌛️ 𝗥𝗲𝗺𝗮𝗶𝗻𝗶𝗻𝗴: {remaining} seconds\n"
+                f"📊 𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀: {progress:.1f}%\n"
+                f"📅 𝗦𝘁𝗮𝗿𝘁𝗲𝗱: {attack['start_time'].strftime('%Y-%m-%d %H:%M:%S')} IST\n"
+                f"🔄 𝗘𝗹𝗮𝗽𝘀𝗲𝗱: {int(elapsed)} seconds\n"
+                "━━━━━━━━━━━━━━━\n"
+            )
+    else:
+        # Simple user view
+        response = "📊 𝗖𝘂𝗿𝗿𝗲𝗻𝘁 𝗔𝘁𝘁𝗮𝗰𝗸 𝗦𝘁𝗮𝘁𝘂𝘀:\n\n"
+        for attack in ongoing_attacks:
+            elapsed = (current_time - attack['start_time']).total_seconds()
+            remaining = max(0, attack['time'] - int(elapsed))
+            progress = min(100, (elapsed / attack['time']) * 100)
+            
+            response += (
+                f"⏳ 𝗦𝘁𝗮𝘁𝘂𝘀: Attack in Progress\n"
+                f"⌛️ 𝗥𝗲𝗺𝗮𝗶𝗻𝗶𝗻𝗴: {remaining} seconds\n"
+                f"📊 𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀: {progress:.1f}%\n"
+                "━━━━━━━━━━━━━━━\n"
+                "⚠️ 𝗣𝗹𝗲𝗮𝘀𝗲 𝘄𝗮𝗶𝘁 𝗳𝗼𝗿 𝘁𝗵𝗲 𝗰𝘂𝗿𝗿𝗲𝗻𝘁\n"
+                "𝗮𝘁𝘁𝗮𝗰𝗸 𝘁𝗼 𝗳𝗶𝗻𝗶𝘀𝗵\n"
+            )
+
     bot.reply_to(message, response)
 
 @bot.message_handler(commands=['broadcast'])
