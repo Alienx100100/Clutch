@@ -787,7 +787,8 @@ def welcome_start(message):
 📢 𝗝𝗢𝗜𝗡 𝗖𝗛𝗔𝗡𝗡𝗘𝗟:
 ➡️ @MATRIX_CHEATS
 
-➡️ 𝗥𝗲𝘀𝗲𝗹𝗹𝗲𝗿𝗣𝗮𝗻𝗲𝗹 𝗕𝘂𝘆: @its_MATRIX_King
+👨‍💻 𝗥𝗲𝘀𝗲𝗹𝗹𝗲𝗿𝗣𝗮𝗻𝗲𝗹 𝗕𝘂𝘆: 
+➡️ @its_MATRIX_King
 👨‍💻 𝗢𝗪𝗡𝗘𝗥/𝗕𝗨𝗬:
 ➡️ @its_MATRIX_King
 '''
